@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/u2gilles/yaru"
 homepage = "https://github.com/u2gilles/yaru"
 keywords = ["utils", "debugging", "education", "timing"]
-categories = ["development-tools", "education"]
+categories = ["development-tools", "development-tools::debugging"]
 
 [dependencies]
 # Standard library only for now
