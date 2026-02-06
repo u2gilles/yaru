@@ -1,0 +1,18 @@
+# Rust
+/target
+
+# IDEs
+/.vscode
+/.idea
+/.vs
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cargo
+# Pour une bibliothèque, on ignore souvent le Cargo.lock pour laisser 
+# les utilisateurs choisir leurs versions de dépendances.
+/Cargo.lock

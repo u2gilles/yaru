@@ -1,0 +1,15 @@
+[package]
+name = "yaru"
+version = "0.1.0"
+edition = "2021"
+authors = ["u2gilles <u2gilles@example.com>"]
+description = "Yet Another Rust Util - A collection of educational and debugging tools for Rust, including timing and memory inspection utilities."
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/u2gilles/yaru"
+homepage = "https://github.com/u2gilles/yaru"
+keywords = ["utils", "debugging", "education", "timing"]
+categories = ["development-tools", "education"]
+
+[dependencies]
+# Standard library only for now
