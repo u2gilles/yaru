@@ -171,8 +171,8 @@ pub fn print_sql_result<T: Serialize>(items: &[T]) {
     fn format_value(v: &Value) -> String {
         match v {
             Value::String(s) => s.clone(),
-            Value::Bool(true) => "✅".to_string(),
-            Value::Bool(false) => "⬜".to_string(),
+            Value::Bool(true) => "T".to_string(),
+            Value::Bool(false) => "F".to_string(),
             Value::Null => "NULL".to_string(),
             Value::Array(arr) => {
                 let elems: Vec<String> = arr.iter().map(|item| {

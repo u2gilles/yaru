@@ -8,7 +8,7 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/u2gilles/yaru"
 keywords = ["memory", "pointer", "debugging", "sql", "timing"]
-categories = ["development-tools::debugging", "education"]
+categories = ["development-tools::debugging", "development-tools::profiling"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
