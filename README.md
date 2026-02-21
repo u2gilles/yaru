@@ -4,13 +4,14 @@
 [![Documentation](https://docs.rs/yaru/badge.svg)](https://docs.rs/yaru)
 [![License](https://img.shields.io/crates/l/yaru.svg)](https://github.com/u2gilles/yaru#license)
 
-A lightweight, **zero-dependency** collection of utilities for Rust applications, providing:
+A lightweight collection of utilities for Rust applications, providing:
 
 - **⏱️ Relative Timestamping**: Track elapsed time since application start
 - **🧵 Thread Identification**: Debug multi-threaded and async code with thread IDs
 - **🔍 Memory Inspection**: Visualize memory layout of Rust types (addresses, lengths, capacities, reference counts, lock states)
+- **🗄️ SQL Result Formatting**: Pretty-print any `Serialize` query result as a UTF-8 table
 
-`yaru` is designed for **developers and educators** who need to understand timing, concurrency, and memory models without heavy frameworks.
+`yaru` is designed for **developers and educators** who need to understand timing, concurrency, memory models, and database results without heavy frameworks.
 
 ---
 
@@ -198,6 +199,104 @@ fn main() {
 
 ---
 
+## 🗄️ SQL Result Formatting
+
+Pretty-print any `&[T]` (where `T: Serialize`) as a UTF-8 table. Works with **sqlx**, **SeaORM**, **Diesel**, or any struct that derives `Serialize`.
+
+### Basic Usage — Flat Structs
+
+```rust
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct User { id: i32, name: String, email: String }
+
+let users = vec![
+    User { id: 1, name: "Alice".into(), email: "alice@example.com".into() },
+    User { id: 2, name: "Bob".into(),   email: "bob@example.com".into() },
+];
+yaru::print_sql_result(&users);
+```
+
+**Output:**
+```text
+╔════╦═══════╦══════════════════╗
+║ id ║ name  ║ email            ║
+╠════╬═══════╬══════════════════╣
+║ 1  ║ Alice ║ alice@example.com║
+╠════╬═══════╬══════════════════╣
+║ 2  ║ Bob   ║ bob@example.com  ║
+╚════╩═══════╩══════════════════╝
+```
+
+### NULL Handling — `Option` Fields
+
+Ideal for LEFT JOIN results where some columns may be `NULL`:
+
+```rust
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct UserProfile {
+    user_id: i32,
+    user_name: String,
+    bio: Option<String>,
+    avatar_url: Option<String>,
+}
+
+let results = vec![
+    UserProfile { user_id: 1, user_name: "Alice".into(),
+                  bio: Some("Hello!".into()), avatar_url: None },
+    UserProfile { user_id: 2, user_name: "Bob".into(),
+                  bio: None, avatar_url: None },
+];
+yaru::print_sql_result(&results);
+```
+
+**Output:**
+```text
+╔═════════╦═══════════╦════════╦════════════╗
+║ user_id ║ user_name ║ bio    ║ avatar_url ║
+╠═════════╬═══════════╬════════╬════════════╣
+║ 1       ║ Alice     ║ Hello! ║ NULL       ║
+╠═════════╬═══════════╬════════╬════════════╣
+║ 2       ║ Bob       ║ NULL   ║ NULL       ║
+╚═════════╩═══════════╩════════╩════════════╝
+```
+
+### 1:N Relations — Tuples with Nested `Vec`
+
+Works with SeaORM's `find_with_related()` results (`Vec<(Parent, Vec<Child>)>`):
+
+```rust,ignore
+// SeaORM example
+let result: Vec<(User, Vec<Task>)> = user::Entity::find()
+    .find_with_related(task::Entity)
+    .all(&db).await?;
+
+yaru::print_sql_result(&result);
+// Parent fields are flattened + children summarised in extra columns
+```
+
+### Boolean Rendering
+
+Booleans are rendered as emoji for quick visual scanning:
+- `true`  → ✅
+- `false` → ⬜
+
+### Smart Value Formatting
+
+| Rust type | Rendered as |
+|-----------|-------------|
+| `String` / `&str` | Plain text |
+| `bool` | ✅ / ⬜ |
+| `Option::None` | `NULL` |
+| `Option::Some(v)` | `v` |
+| `Vec<T>` (of objects) | `[name1, name2, ...]` (extracts `name` or `title` field) |
+| Other | JSON representation |
+
+---
+
 ## ⚠️ Important: Macro Usage Best Practices
 
 ### Macros Automatically Borrow - Don't Use `&`!
@@ -315,10 +414,11 @@ print_vec_ptr!(v, "v");         // ✅ No & needed, macro handles it
 
 ## 🎯 Design Philosophy
 
-1. **Zero Dependencies**: Only uses Rust standard library.
+1. **Lightweight Dependencies**: Only [`serde`](https://crates.io/crates/serde), [`serde_json`](https://crates.io/crates/serde_json), and [`comfy-table`](https://crates.io/crates/comfy-table).
 2. **Educational Focus**: Clear, verbose output for learning.
 3. **Non-Invasive**: All functions/macros only borrow data.
-4. **Consistent API**: `print_*` for output, `format_*` for strings.
+4. **Database-Agnostic**: Works with any ORM/query library — sqlx, SeaORM, Diesel, etc.
+5. **Consistent API**: `print_*` for output, `format_*` for strings.
 
 ---
 

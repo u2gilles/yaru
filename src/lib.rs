@@ -10,6 +10,7 @@
 //!
 //! - **[`time_log`]**: Relative timestamped logging with thread information.
 //! - **[`ptr_inspect`]**: Memory layout visualization for various Rust types.
+//! - **[`sql_util`]**: Pretty-print any `Serialize` query result as a UTF-8 table.
 //!
 //! ---
 //!
