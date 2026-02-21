@@ -1,0 +1,75 @@
+{
+  // Active les indices
+  "editor.inlayHints.enabled": "offUnlessPressed",
+  // "editor.inlayHints.enabled": "off",
+
+  // Affiche le type des variables.
+  // Par exemple : let age = 30;
+  "rust-analyzer.inlayHints.typeHints.enable": true,
+
+  // Affiche le nom des paramètres
+  // Par exemple : fn configurer(mode_sombre: bool, plein_ecran: bool, volume: u8) { ... }
+  "rust-analyzer.inlayHints.parameterHints.enable": true,
+
+  // Affiche le type des variables dans les chaînes de méthodes.
+  // Par exemple : let noms: Vec<String> = utilisaeurs.iter().map(|u| u.nom.clone()).collect();
+  "rust-analyzer.inlayHints.chainingHints.enable": true,
+
+  // Affiche le mode de liaison des variables.
+  // Par exemple : (ref x, ref y) => ...
+  "rust-analyzer.inlayHints.bindingModeHints.enable": true,
+
+  // Affiche le type de capture dans les closures (par déplacement 'move' ou référence).
+  // Exemple : || { utiliser(x) }  ->  || { utiliser(move x) }
+  "rust-analyzer.inlayHints.closureCaptureHints.enable": true,
+
+  // Affiche le nom de l'item après une accolade fermante lointaine.
+  // Exemple : } // fn main
+  "rust-analyzer.inlayHints.closingBraceHints.enable": true,
+
+  // Affiche où les variables sont détruites (drop) implicitement.
+  // C'est très verbeux, utile pour le débogage de mémoire.
+  // Souvent trop bruyant, à activer au besoin
+  "rust-analyzer.inlayHints.implicitDrops.enable": false,
+
+  // Affiche la limite exclusive dans les plages (ranges).
+  // Exemple : for i in 0..5  ->  0..<5
+  "rust-analyzer.inlayHints.rangeExclusiveHints.enable": true,
+
+  // Affiche le type de retour des closures.
+  // Par exemple : let est_grand = |x| x > 10;
+  "rust-analyzer.inlayHints.closureReturnTypeHints.enable": "always",
+
+  // Affiche les durées de vie des variables.
+  // Par exemple : fn extraire_nom<'1>(c: &'1 Config<'1>) -> &'1 str
+  "rust-analyzer.inlayHints.lifetimeElisionHints.enable": "never",
+
+  // Affiche les valeurs numériques des variantes d'enum.
+  // Exemple : enum Couleur { Rouge = 0, Bleu = 1 }
+  "rust-analyzer.inlayHints.discriminantHints.enable": "always",
+
+  // Affiche les ajustements d'expression.
+  // Par exemple : (&fichier).len();
+  "rust-analyzer.inlayHints.expressionAdjustmentHints.enable": "always",
+
+  // Configuration pour l'extension "Easy Toggle Settings"
+  // (Ajoute un bouton dans la barre de statut pour activer/désactiver les indices)
+  "easy-toggle-settings.items": [
+    {
+      "property": "editor.inlayHints.enabled",
+      "values": ["on", "off"],
+      "icon": "eye",
+      "label": "Inlay Hints"
+    }
+  ],
+
+  // Configuration du bouton "Run Code" (extension Code Runner)
+  "code-runner.executorMap": {
+    "rust": "cd $workspaceRoot ; cargo run --manifest-path \"$dir../../Cargo.toml\" --bin $fileNameWithoutExt"
+  },
+  "code-runner.runInTerminal": true,
+  "code-runner.clearPreviousOutput": true,
+  "code-runner.saveFileBeforeRun": true,
+  "code-runner.preserveFocus": false,
+  "code-runner.ignoreSelection": true
+}
