@@ -1,6 +1,6 @@
 [package]
 name = "yaru"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["u2gilles <u2gilles@example.com>"]
 description = "Yet Another Rust Toolset - A collection of utilities for timing, memory inspection and SQL result formatting."
