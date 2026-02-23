@@ -1,4 +1,4 @@
-//! # Yet Another Rust Toolset (yaru) 🛠️
+//! # Yet Another Rust Util (yaru) 🛠️
 //!
 //! A lightweight collection of utilities for Rust applications.
 //!

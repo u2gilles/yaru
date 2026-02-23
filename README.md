@@ -1,4 +1,4 @@
-# Yet Another Rust Toolset (yaru) 🛠️
+# Yet Another Rust Util (yaru) 🛠️
 
 [![Crates.io](https://img.shields.io/crates/v/yaru.svg)](https://crates.io/crates/yaru)
 [![Documentation](https://docs.rs/yaru/badge.svg)](https://docs.rs/yaru)
