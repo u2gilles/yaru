@@ -1,11 +1,20 @@
 //! # SQL Result Pretty-Printing
 //!
-//! This module provides [`print_sql_result`], a generic function that renders any
-//! `&[T]` (where `T: Serialize`) as a pretty UTF-8 table in the terminal.
+//! This module provides three macros for displaying database query results
+//! in the terminal:
 //!
-//! It is designed to work seamlessly with query results from any Rust database
-//! library — **sqlx**, **SeaORM**, **Diesel**, or any other — as long as the
-//! result types derive [`serde::Serialize`].
+//! | Macro | Output |
+//! |-------|--------|
+//! | [`print_sql_table!`] | Pretty UTF-8 table only |
+//! | [`print_sql_json_table!`] | `Debug` dump **+** table |
+//! | [`print_sql_json!`] | `Debug` dump only |
+//!
+//! All three macros **automatically capture the variable name** you pass in
+//! (via [`stringify!`]), so there is no need for a separate `name` parameter.
+//!
+//! They work with any `&[T]` (where `T: Serialize`) and are designed for
+//! seamless use with **sqlx**, **SeaORM**, **Diesel**, or any other Rust
+//! database library — as long as the result types derive [`serde::Serialize`].
 //!
 //! ## Features
 //!
@@ -15,7 +24,7 @@
 //! | `&[(Parent, Vec<Child>)]` | Parent fields + a summarised column for children (1:N) |
 //! | `&[(A, Option<B>)]` | Flattened columns; `None` → `NULL` (LEFT JOIN style) |
 //! | Struct with `Option` fields | `None` → `NULL`, `Some(v)` → `v` |
-//! | `bool` fields | `true` → ✅, `false` → ⬜ |
+//! | `bool` fields | `true` → T, `false` → F |
 //! | Nested arrays of objects | Extracts `name` or `title` field if available |
 //!
 //! ## Quick Example
@@ -23,7 +32,7 @@
 //! ```rust
 //! use serde::Serialize;
 //!
-//! #[derive(Serialize)]
+//! #[derive(Debug, Serialize)]
 //! struct User { id: i32, name: String, active: bool }
 //!
 //! let users = vec![
@@ -31,18 +40,14 @@
 //!     User { id: 2, name: "Bob".into(),   active: false },
 //! ];
 //!
-//! yaru::print_sql_result(&users);
-//! ```
+//! // Just the table
+//! yaru::print_sql_table!(users);
 //!
-//! Output:
-//! ```text
-//! ╔════╦═══════╦════════╗
-//! ║ id ║ name  ║ active ║
-//! ╠════╬═══════╬════════╣
-//! ║ 1  ║ Alice ║ ✅     ║
-//! ╠════╬═══════╬════════╣
-//! ║ 2  ║ Bob   ║ ⬜     ║
-//! ╚════╩═══════╩════════╝
+//! // Debug dump + table
+//! yaru::print_sql_json_table!(users);
+//!
+//! // Debug dump only
+//! yaru::print_sql_json!(users);
 //! ```
 //!
 //! ## Database-Agnostic
@@ -60,106 +65,168 @@ use serde_json::Value;
 
 /// Prints a slice of [`Serialize`]-able items as a pretty UTF-8 table to stdout.
 ///
-/// This function serializes each item to JSON via [`serde_json`], dynamically
-/// discovers the column names from the struct fields, and renders the result
-/// using [`comfy_table`] with the `UTF8_FULL` preset (double-line borders).
+/// The variable name is **automatically captured** — no need to pass it manually.
+/// Internally the macro uses [`stringify!`] to reflect the expression you pass in.
 ///
-/// # Arguments
+/// # Usage
 ///
-/// * `items` — A slice of any type that implements [`Serialize`].
-///   Accepts `&Vec<T>` thanks to auto-deref.
+/// ```rust
+/// use serde::Serialize;
+///
+/// #[derive(Serialize)]
+/// struct User { id: i32, name: String, active: bool }
+///
+/// let users = vec![
+///     User { id: 1, name: "Alice".into(), active: true },
+///     User { id: 2, name: "Bob".into(),   active: false },
+/// ];
+///
+/// yaru::print_sql_table!(users);
+/// ```
+///
+/// Output:
+/// ```text
+/// => TABLE: users
+/// ╔════╦═══════╦════════╗
+/// ║ id ║ name  ║ active ║
+/// ╠════╬═══════╬════════╣
+/// ║ 1  ║ Alice ║ T      ║
+/// ╠════╬═══════╬════════╣
+/// ║ 2  ║ Bob   ║ F      ║
+/// ╚════╩═══════╩════════╝
+/// ```
 ///
 /// # Supported input shapes
 ///
-/// ## 1. Flat structs — `&[MyStruct]`
-///
-/// Each field becomes a column header; each item becomes a row.
-///
-/// ```rust
-/// use serde::Serialize;
-///
-/// #[derive(Serialize)]
-/// struct User { id: i32, name: String, email: String }
-///
-/// let users = vec![
-///     User { id: 1, name: "Alice".into(), email: "alice@example.com".into() },
-///     User { id: 2, name: "Bob".into(),   email: "bob@example.com".into() },
-/// ];
-/// yaru::print_sql_result(&users);
-/// // ╔════╦═══════╦══════════════════╗
-/// // ║ id ║ name  ║ email            ║
-/// // ╠════╬═══════╬══════════════════╣
-/// // ║ 1  ║ Alice ║ alice@example.com║
-/// // ║ 2  ║ Bob   ║ bob@example.com  ║
-/// // ╚════╩═══════╩══════════════════╝
-/// ```
-///
-/// ## 2. Structs with `Option` fields — NULL handling
-///
-/// `Option::None` is displayed as `NULL`, which is ideal for LEFT JOIN results.
-///
-/// ```rust
-/// use serde::Serialize;
-///
-/// #[derive(Serialize)]
-/// struct UserProfile {
-///     user_id: i32,
-///     user_name: String,
-///     bio: Option<String>,        // NULL when no profile exists
-///     avatar_url: Option<String>, // NULL when no avatar
-/// }
-///
-/// let results = vec![
-///     UserProfile {
-///         user_id: 1, user_name: "Alice".into(),
-///         bio: Some("Hello!".into()), avatar_url: None,
-///     },
-///     UserProfile {
-///         user_id: 2, user_name: "Bob".into(),
-///         bio: None, avatar_url: None,
-///     },
-/// ];
-/// yaru::print_sql_result(&results);
-/// // ╔═════════╦═══════════╦════════╦════════════╗
-/// // ║ user_id ║ user_name ║ bio    ║ avatar_url ║
-/// // ╠═════════╬═══════════╬════════╬════════════╣
-/// // ║ 1       ║ Alice     ║ Hello! ║ NULL       ║
-/// // ║ 2       ║ Bob       ║ NULL   ║ NULL       ║
-/// // ╚═════════╩═══════════╩════════════════════════╝
-/// ```
-///
-/// ## 3. Tuples with nested `Vec` — 1:N relations
-///
-/// When using SeaORM's `find_with_related()`, the result is typically
-/// `Vec<(Parent, Vec<Child>)>`. The parent fields are flattened as columns
-/// and the children are summarised in an extra column.
-///
-/// ```rust,ignore
-/// // SeaORM example (requires sea-orm dependency)
-/// let result: Vec<(User, Vec<Task>)> = user::Entity::find()
-///     .find_with_related(task::Entity)
-///     .all(&db).await?;
-///
-/// yaru::print_sql_result(&result);
-/// // Parent columns + a "related_1" column listing each child
-/// ```
-///
-/// ## 4. Boolean values
-///
-/// Booleans are rendered as emoji for quick visual scanning:
-/// - `true`  → ✅
-/// - `false` → ⬜
+/// | Input shape | What you get |
+/// |-------------|--------------|
+/// | `&[MyStruct]` | One column per field, one row per item |
+/// | `&[(Parent, Vec<Child>)]` | Parent fields + a summarised column for children (1:N) |
+/// | `&[(A, Option<B>)]` | Flattened columns; `None` → `NULL` (LEFT JOIN style) |
+/// | Struct with `Option` fields | `None` → `NULL`, `Some(v)` → `v` |
+/// | `bool` fields | `true` → T, `false` → F |
+/// | Nested arrays of objects | Extracts `name` or `title` field if available |
 ///
 /// # Empty input
 ///
 /// If the slice is empty, prints `(Aucune donnée)` and returns immediately.
+#[macro_export]
+macro_rules! print_sql_table {
+    ($items:expr) => {
+        print!("\n=> TABLE: {} ({})", stringify!($items), $items.len());
+        $crate::sql_util::internal_print_sql_table(&$items);
+    };
+}
+
+/// Prints a slice of [`Serialize`] + [`Debug`] items as **JSON first, then as a table**.
+///
+/// This is the most complete debug view: you see the raw `Debug` representation
+/// (handy for nested `Option`s, enums, etc.) **and** a clean tabular rendering
+/// right below it. The variable name is **automatically captured** via [`stringify!`].
+///
+/// # Usage
 ///
 /// ```rust
-/// let empty: Vec<i32> = vec![];
-/// yaru::print_sql_result(&empty);
-/// // (Aucune donnée)
+/// use serde::Serialize;
+///
+/// #[derive(Debug, Serialize)]
+/// struct Task { id: i32, title: String, done: bool }
+///
+/// let tasks = vec![
+///     Task { id: 1, title: "Write tests".into(), done: true },
+///     Task { id: 2, title: "Review code".into(), done: false },
+/// ];
+///
+/// yaru::print_sql_json_table!(tasks);
 /// ```
-pub fn print_sql_result<T: Serialize>(items: &[T]) {
+///
+/// Output:
+/// ```text
+/// => JSON : tasks (2) :
+/// [
+///     Task { id: 1, title: "Write tests", done: true },
+///     Task { id: 2, title: "Review code", done: false },
+/// ]
+///
+/// => TABLE: tasks (2) :
+/// ╔════╦═══════════════╦══════╗
+/// ║ id ║ title         ║ done ║
+/// ╠════╬═══════════════╬══════╣
+/// ║ 1  ║ Write tests   ║ T    ║
+/// ╠════╬═══════════════╬══════╣
+/// ║ 2  ║ Review code   ║ F    ║
+/// ╚════╩═══════════════╩══════╝
+/// ```
+///
+/// # When to use
+///
+/// Use this macro when you want to **inspect the raw data structure** (via `Debug`)
+/// alongside the pretty table — for example when debugging SeaORM query results
+/// that contain `Option`, tuples, or nested relations.
+#[macro_export]
+macro_rules! print_sql_json_table {
+    ($items:expr) => {
+        println!(
+            "\n=> JSON: {} ({})\n{:#?}",
+            stringify!($items),
+            $items.len(),
+            $items
+        );
+        print!("\n=> TABLE: {} ({})", stringify!($items), $items.len());
+        $crate::sql_util::internal_print_sql_table(&$items);
+    };
+}
+
+/// Prints a slice of [`Serialize`] + [`Debug`] items as **JSON only** (no table).
+///
+/// Uses Rust's `{:#?}` pretty-print format to display the full `Debug`
+/// representation. The variable name and item count are printed as a header.
+/// The variable name is **automatically captured** via [`stringify!`].
+///
+/// # Usage
+///
+/// ```rust
+/// use serde::Serialize;
+///
+/// #[derive(Debug, Serialize)]
+/// struct Task { id: i32, title: String, done: bool }
+///
+/// let tasks = vec![
+///     Task { id: 1, title: "Write tests".into(), done: true },
+///     Task { id: 2, title: "Review code".into(), done: false },
+/// ];
+///
+/// yaru::print_sql_json!(tasks);
+/// ```
+///
+/// Output:
+/// ```text
+/// => JSON : tasks (2) :
+/// [
+///     Task { id: 1, title: "Write tests", done: true },
+///     Task { id: 2, title: "Review code", done: false },
+/// ]
+/// ```
+///
+/// # When to use
+///
+/// Use this macro when you only need the raw `Debug` dump — for example to
+/// quickly compare two result sets, or when the data contains deeply nested
+/// structures that are easier to read in `Debug` form than in a table.
+#[macro_export]
+macro_rules! print_sql_json {
+    ($items:expr) => {
+        println!(
+            "\n=> JSON: {} ({})\n{:#?}",
+            stringify!($items),
+            $items.len(),
+            $items
+        );
+    };
+}
+
+#[doc(hidden)]
+pub fn internal_print_sql_table<T: Serialize>(items: &[T]) {
     if items.is_empty() {
         println!("(Aucune donnée)");
         return;
@@ -175,17 +242,22 @@ pub fn print_sql_result<T: Serialize>(items: &[T]) {
             Value::Bool(false) => "F".to_string(),
             Value::Null => "NULL".to_string(),
             Value::Array(arr) => {
-                let elems: Vec<String> = arr.iter().map(|item| {
-                    if let Value::Object(m) = item {
-                        if let Some(Value::String(n)) = m.get("name").or(m.get("title")) {
-                            return n.clone();
+                let elems: Vec<String> = arr
+                    .iter()
+                    .map(|item| {
+                        if let Value::Object(m) = item {
+                            if let Some(Value::String(n)) = m.get("name").or(m.get("title")) {
+                                return n.clone();
+                            }
                         }
-                    }
-                    if let Value::String(s) = item { return s.clone(); }
-                    item.to_string()
-                }).collect();
+                        if let Value::String(s) = item {
+                            return s.clone();
+                        }
+                        item.to_string()
+                    })
+                    .collect();
                 format!("[{}]", elems.join(", "))
-            },
+            }
             Value::Object(_) => v.to_string(),
             _ => v.to_string(),
         }
@@ -204,7 +276,11 @@ pub fn print_sql_result<T: Serialize>(items: &[T]) {
                     match v {
                         Value::Object(map) => {
                             for (k, inner_v) in map {
-                                let key_name = if i > 0 { format!("{}_{}", k, i) } else { k.clone() };
+                                let key_name = if i > 0 {
+                                    format!("{}_{}", k, i)
+                                } else {
+                                    k.clone()
+                                };
                                 cols.push((key_name, format_value(inner_v)));
                             }
                         }
@@ -231,7 +307,7 @@ pub fn print_sql_result<T: Serialize>(items: &[T]) {
     for item in items {
         let val_json = serde_json::to_value(item).unwrap_or_default();
         let cols = flatten_item(&val_json);
-        
+
         for (k, _) in &cols {
             if !headers.contains(k) {
                 headers.push(k.clone());

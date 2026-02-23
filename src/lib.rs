@@ -1,10 +1,11 @@
 //! # Yet Another Rust Toolset (yaru) 🛠️
 //!
-//! A lightweight, zero-dependency collection of utilities for Rust applications.
+//! A lightweight collection of utilities for Rust applications.
 //!
-//! `yaru` provides **relative timestamping**, **thread identification**, and **memory layout 
-//! visualization** — all designed for developers and educators who need to understand timing, 
-//! concurrency, and memory models without heavy frameworks.
+//! `yaru` provides **relative timestamping**, **thread identification**, **memory layout
+//! visualization**, and **SQL result pretty-printing** — all designed for developers and
+//! educators who need to understand timing, concurrency, memory models, and database
+//! results without heavy frameworks.
 //!
 //! ## Modules
 //!
@@ -20,7 +21,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! yaru = "0.1"
+//! yaru = "0.2"
 //! ```
 //!
 //! Then import everything with:
@@ -123,14 +124,52 @@
 //!
 //! ---
 //!
+//! ## 🗄️ SQL Result Pretty-Printing
+//!
+//! Three macros for displaying database query results. The variable name is
+//! **automatically captured** via [`stringify!`] — no manual `name` parameter needed.
+//!
+//! | Macro | Output |
+//! |-------|--------|
+//! | [`print_sql_table!`] | Pretty UTF-8 table only |
+//! | [`print_sql_json_table!`] | `Debug` dump **+** table |
+//! | [`print_sql_json!`] | `Debug` dump only |
+//!
+//! ### Example
+//!
+//! ```rust
+//! use serde::Serialize;
+//!
+//! #[derive(Debug, Serialize)]
+//! struct Task { id: i32, title: String, done: bool }
+//!
+//! let tasks = vec![
+//!     Task { id: 1, title: "Write tests".into(), done: true },
+//!     Task { id: 2, title: "Review code".into(), done: false },
+//! ];
+//!
+//! // Table only
+//! yaru::print_sql_table!(tasks);
+//!
+//! // Debug dump + table
+//! yaru::print_sql_json_table!(tasks);
+//!
+//! // Debug dump only
+//! yaru::print_sql_json!(tasks);
+//! ```
+//!
+//! Works with **sqlx**, **SeaORM**, **Diesel**, or any `T: Serialize`.
+//!
+//! ---
+//!
 //! ## ⚠️ Important: Macro Usage
 //!
-//! **All macros automatically borrow the value with `&`.** 
+//! **All pointer inspection macros automatically borrow the value with `&`.**
 //!
 //! ✅ **Correct usage:**
 //! ```rust
 //! use yaru::*;
-//! 
+//!
 //! let v = vec![1, 2, 3];
 //! print_ptr!(v);           // Correct: macro does &v internally
 //! print_vec_ptr!(v);       // Correct: macro does &v internally
@@ -144,14 +183,6 @@
 //! ```
 //!
 //! **Rule of thumb:** Pass the value directly to macros, without `&`.
-//!
-//! For functions, you must provide the reference yourself:
-//! ```rust
-//! use yaru::*;
-//! 
-//! let v = vec![1, 2, 3];
-//! print_vec_ptr(&v, "v");  // Function requires &v
-//! ```
 //!
 //! ---
 //!

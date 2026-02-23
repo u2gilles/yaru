@@ -1,6 +1,42 @@
-# Amélioration de la bibliothèque yaru
+# Changelog de la bibliothèque yaru
 
-## Résumé des modifications
+## v0.2.1 — SQL : fonctions → macros (breaking change)
+
+### ⚠️ Breaking Change : API SQL
+
+Les 3 fonctions d'affichage SQL ont été remplacées par des **macros** `#[macro_export]`.
+Le paramètre `name: &str` est supprimé : le nom de la variable est capturé automatiquement
+via `stringify!`.
+
+**Avant (v0.1.x) :**
+```rust
+yaru::print_sql_table("tasks", &tasks);
+yaru::print_sql_json_table("result", &result);
+yaru::print_sql_json("items", &items);
+```
+
+**Après (v0.2.1) :**
+```rust
+yaru::print_sql_table!(tasks);
+yaru::print_sql_json_table!(result);
+yaru::print_sql_json!(items);
+```
+
+### Détail des changements
+
+1. **`print_sql_table!`** — Affiche uniquement la table UTF-8
+2. **`print_sql_json_table!`** — Affiche le Debug (`{:#?}`) puis la table
+3. **`print_sql_json!`** — Affiche uniquement le Debug
+
+- `internal_print_sql_table` est maintenant `pub` (avec `#[doc(hidden)]`) pour être
+  accessible depuis les macros `#[macro_export]`
+- Format des titres : `=> TABLE: tasks (3)` et `=> JSON: tasks (3)`
+- Docstrings complètes (crates.io-ready) sur chaque macro
+- README, lib.rs et module doc mis à jour
+
+---
+
+## Résumé des modifications (v0.1.x)
 
 ### 1. Nouveau module time_log avec fonctions format
 

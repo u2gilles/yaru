@@ -21,7 +21,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-yaru = "0.1"
+yaru = "0.2"
 ```
 
 ---
@@ -203,7 +203,15 @@ fn main() {
 
 Pretty-print any `&[T]` (where `T: Serialize`) as a UTF-8 table. Works with **sqlx**, **SeaORM**, **Diesel**, or any struct that derives `Serialize`.
 
-### Basic Usage — Flat Structs
+Three macros are available — all **automatically capture the variable name** via `stringify!`, so there is no manual `name` parameter:
+
+| Macro | Output |
+|-------|--------|
+| `print_sql_table!` | Pretty UTF-8 table only |
+| `print_sql_json_table!` | `Debug` dump **+** table |
+| `print_sql_json!` | `Debug` dump only |
+
+### `print_sql_table!` — Table Only
 
 ```rust
 use serde::Serialize;
@@ -215,18 +223,78 @@ let users = vec![
     User { id: 1, name: "Alice".into(), email: "alice@example.com".into() },
     User { id: 2, name: "Bob".into(),   email: "bob@example.com".into() },
 ];
-yaru::print_sql_result(&users);
+yaru::print_sql_table!(users);
 ```
 
 **Output:**
 ```text
-╔════╦═══════╦══════════════════╗
-║ id ║ name  ║ email            ║
-╠════╬═══════╬══════════════════╣
-║ 1  ║ Alice ║ alice@example.com║
-╠════╬═══════╬══════════════════╣
-║ 2  ║ Bob   ║ bob@example.com  ║
-╚════╩═══════╩══════════════════╝
+=> TABLE: users (2)
+┌────┬───────┬───────────────────┐
+│ id ┆ name  ┆ email             │
+╞════╪═══════╪═══════════════════╡
+│ 1  ┆ Alice ┆ alice@example.com │
+├╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 2  ┆ Bob   ┆ bob@example.com   │
+└────┴───────┴───────────────────┘
+```
+
+### `print_sql_json_table!` — Debug + Table
+
+The most complete debug view: raw `Debug` representation **and** a clean table.
+
+```rust
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+struct Task { id: i32, title: String, done: bool }
+
+let tasks = vec![
+    Task { id: 1, title: "Write tests".into(), done: true },
+    Task { id: 2, title: "Review code".into(), done: false },
+];
+yaru::print_sql_json_table!(tasks);
+```
+
+**Output:**
+```text
+=> JSON: tasks (2)
+[
+    Task { id: 1, title: "Write tests", done: true },
+    Task { id: 2, title: "Review code", done: false },
+]
+
+=> TABLE: tasks (2)
+┌────┬─────────────┬──────┐
+│ id ┆ title       ┆ done │
+╞════╪═════════════╪══════╡
+│ 1  ┆ Write tests ┆ T    │
+├╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌┤
+│ 2  ┆ Review code ┆ F    │
+└────┴─────────────┴──────┘
+```
+
+### `print_sql_json!` — Debug Only
+
+```rust
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+struct Task { id: i32, title: String, done: bool }
+
+let tasks = vec![
+    Task { id: 1, title: "Write tests".into(), done: true },
+    Task { id: 2, title: "Review code".into(), done: false },
+];
+yaru::print_sql_json!(tasks);
+```
+
+**Output:**
+```text
+=> JSON: tasks (2)
+[
+    Task { id: 1, title: "Write tests", done: true },
+    Task { id: 2, title: "Review code", done: false },
+]
 ```
 
 ### NULL Handling — `Option` Fields
@@ -250,18 +318,19 @@ let results = vec![
     UserProfile { user_id: 2, user_name: "Bob".into(),
                   bio: None, avatar_url: None },
 ];
-yaru::print_sql_result(&results);
+yaru::print_sql_table!(results);
 ```
 
 **Output:**
 ```text
-╔═════════╦═══════════╦════════╦════════════╗
-║ user_id ║ user_name ║ bio    ║ avatar_url ║
-╠═════════╬═══════════╬════════╬════════════╣
-║ 1       ║ Alice     ║ Hello! ║ NULL       ║
-╠═════════╬═══════════╬════════╬════════════╣
-║ 2       ║ Bob       ║ NULL   ║ NULL       ║
-╚═════════╩═══════════╩════════╩════════════╝
+=> TABLE: results (2)
+┌─────────┬───────────┬────────┬────────────┐
+│ user_id ┆ user_name ┆ bio    ┆ avatar_url │
+╞═════════╪═══════════╪════════╪════════════╡
+│ 1       ┆ Alice     ┆ Hello! ┆ NULL       │
+├╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 2       ┆ Bob       ┆ NULL   ┆ NULL       │
+└─────────┴───────────┴────────┴────────────┘
 ```
 
 ### 1:N Relations — Tuples with Nested `Vec`
@@ -274,22 +343,16 @@ let result: Vec<(User, Vec<Task>)> = user::Entity::find()
     .find_with_related(task::Entity)
     .all(&db).await?;
 
-yaru::print_sql_result(&result);
+yaru::print_sql_json_table!(result);
 // Parent fields are flattened + children summarised in extra columns
 ```
-
-### Boolean Rendering
-
-Booleans are rendered as emoji for quick visual scanning:
-- `true`  → ✅
-- `false` → ⬜
 
 ### Smart Value Formatting
 
 | Rust type | Rendered as |
 |-----------|-------------|
 | `String` / `&str` | Plain text |
-| `bool` | ✅ / ⬜ |
+| `bool` | `T` / `F` |
 | `Option::None` | `NULL` |
 | `Option::Some(v)` | `v` |
 | `Vec<T>` (of objects) | `[name1, name2, ...]` (extracts `name` or `title` field) |
