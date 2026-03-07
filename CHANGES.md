@@ -1,5 +1,16 @@
 # Changelog de la bibliothèque yaru
 
+## v0.2.3 — Fix: Compatibilité Web (WASM)
+
+### 🐛 Correction : Compilation WASM
+La bibliothèque échouait à compiler pour la cible `wasm32-unknown-unknown` car sa dépendance `comfy-table` activait par défaut des fonctionnalités de gestion du terminal (`crossterm`) incompatibles avec le Web.
+
+**Changements :**
+- **`comfy-table`** : Désactivation des `default-features`. Cela supprime la dépendance transitive à `crossterm` et permet à `yaru` d'être utilisé dans des projets Dioxus Web/WASM.
+- L'affichage des tables SQL reste fonctionnel mais sans les couleurs/styles dynamiques du terminal (qui ne sont pas supportés dans un navigateur de toute façon).
+
+---
+
 ## v0.2.1 — SQL : fonctions → macros (breaking change)
 
 ### ⚠️ Breaking Change : API SQL
